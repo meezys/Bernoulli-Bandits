@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import matplotlib.pyplot as plt 
 from math import ceil, log  
@@ -27,22 +28,55 @@ def ETC(delta):
     for round in range(horizon):
         if round <= m * number_of_arms:
             arm = round % number_of_arms
-            result = bernoulli_reward(arms[arm])
-            update_arm_average(arms_array, number_of_trials, arm, result)
-            regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[arm], round + 1))
         else:
             arm = np.argmax(arms_array)
-            result = bernoulli_reward(arms[arm])
-            update_arm_average(arms_array, number_of_trials, arm, result)
-            regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[arm], round + 1))
+        result = bernoulli_reward(arms[arm])
+        update_arm_average(arms_array, number_of_trials, arm, result)
+        regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[arm], round + 1))
     return regret
 
-def ETC(round, delta):
+def greedy():
     regret = []
     arms_array = [0] * number_of_arms
-    number_of_trials = [0] * number_of_arms
-    m = max(1, ceil(4 / delta**2 * log(horizon * delta**2 / 4)))
-    
+    alpha_beta = [[1, 1]] * number_of_arms
+    for round in range(horizon):
+        if round < number_of_arms:
+            chosen = round
+        else:
+            chosen = np.argmax(arms_array)
+        result = bernoulli_reward(arms[chosen])
+        greedy_update(arms_array, alpha_beta, chosen, result)
+        regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[chosen], round + 1))
+    return regret
+
+def greedy_update(arms_array, alpha_beta, arm, result):
+    """Update the moving average for the given arm using the alpha-beta method."""
+    if result == 1:
+        alpha_beta[arm][0] += result
+    else:
+        alpha_beta[arm][1] += 1 - result
+    arms_array[arm] = alpha_beta[arm][0] / (alpha_beta[arm][0] + alpha_beta[arm][1])
+
+def thompson_sampling():
+    regret = []
+    arms_array = [0] * number_of_arms
+    alpha_beta = [[1, 1]] * number_of_arms
+    for round in range(horizon):
+        for arm in range(number_of_arms):
+            # Sample from the Beta distribution for each arm
+            arms_array[arm] = np.random.beta(alpha_beta[arm][0], alpha_beta[arm][1])
+        
+        chosen = np.argmax(arms_array)
+        result = bernoulli_reward(arms[chosen])
+        # Update the regret based on the chosen arm's optimality gap
+        # and the current round.
+        thompson_update(arms_array, alpha_beta, chosen, result)
+        regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[chosen], round + 1))
+    return regret
+
+def thompson_update(arms_array, alpha_beta, arm, result):
+    """Update the moving average for the given arm using the alpha-beta method."""
+    alpha_beta[arm] = [alpha_beta[arm][0] + result, alpha_beta[arm][1] + (1 - result)]
 
 """Moving average calculation: A_k = k-1/k * A_k-1 + 1/k * v_k."""
 def update_arm_average(arms_array, number_of_trials, arm, result):
@@ -61,15 +95,27 @@ def next_regret(prev_regret, current_regret, length):
     else:
         return current_regret
     return new
-
-def run_simulation():
-    for round in range(horizon):
-        etc = ETC(round, delta)  # Start the simulation with the first round
         
+def run_simulations():
+    global horizon
+    horizon = 10000
+    global arms
+    arms = [0.7, 0.8, 0.9]
+    global number_of_arms
+    number_of_arms = len(arms)
+    global optimal_arm
+    optimal_arm = max(arms)
+    global optimality_gaps
+    optimality_gaps = [optimal_arm - arm for arm in arms]
 
 
-etc1 = ETC(delta)  # Start the simulation with the first round
-plt.plot(range(len(etc)), etc, label='ETC Regret')
+thompson_sampling = thompson_sampling()  # Run Thompson Sampling
+etc = ETC(delta)  # Start the simulation with the first round
+greedy_regret = greedy()  # Run Greedy algorithm
+# Plotting the results
+plt.plot(range(len(etc)), etc, label='ETC Regret', color='blue')
+plt.plot(range(len(thompson_sampling)), thompson_sampling, label='Thompson Sampling Regret', color='orange')
+plt.plot(range(len(greedy_regret)), greedy_regret, label='Greedy Regret', color='green')
 plt.xlabel('Rounds')
 plt.ylabel('Regret')
 plt.title('Regret over Rounds')
