@@ -84,10 +84,31 @@ def next_regret(prev_regret, current_regret, length):
     else:
         return current_regret
     return new
+
+def ucb():
+    regret = []
+    sample_means = [0] * number_of_arms
+    number_of_trials = [0] * number_of_arms
+    for i in range(number_of_arms):
+        sample_means[i] = bernoulli_reward(arms[i])
+        number_of_trials[i] = 1
+        regret.append(next_regret(0, optimality_gaps[i], i + 1))
+    for round in range(number_of_arms, horizon):
+        ucb_values = [sample_means[i] + math.sqrt(2 * log(round + 1) / number_of_trials[i]) for i in range(number_of_arms)]
+        chosen = np.argmax(ucb_values)
+        result = bernoulli_reward(arms[chosen])
+        update_arm_average(sample_means, number_of_trials, chosen, result)
+        regret.append(next_regret(regret[-1], optimality_gaps[chosen], round + 1))
+    return regret
+def f(t):
+    return 1 + t * (math.log(t))**2
+
+
+
 """This function calculates the next regret value based on the previous regret,
 the current regret, and the length.
 The chosen methods are ETC, Greedy, and Thompson Sampling."""
-def run_simulations():
+def run_simulation():
     global horizon
     horizon = 10000
     global arms
@@ -109,20 +130,21 @@ def run_simulations():
     thompson = thompson_sampling()  # Run Thompson Sampling
     etc = ETC()  # Start the simulation with the first round
     greedy_regret = greedy()  # Run Greedy algorithm
-    
+    ucb_regret = ucb()  # Run UCB algorithm
     # Plot the results
-    plot(etc, thompson, greedy_regret)
+    plot(etc, thompson, greedy_regret, ucb_regret)
 
-def plot(etc, thompson, greedy_regret):
+def plot(etc, thompson, greedy_regret, ucb_regret):
 # Plotting the results
     plt.plot(range(len(etc)), etc, label='ETC Regret', color='blue')
     plt.plot(range(len(thompson)), thompson, label='Thompson Sampling Regret', color='orange')
     plt.plot(range(len(greedy_regret)), greedy_regret, label='Greedy Regret', color='green')
+    plt.plot(range(len(ucb_regret)), ucb_regret, label='UCB Regret', color='red')
     plt.xlabel('Rounds')
     plt.ylabel('Regret')
     plt.title('Regret over Rounds')
     plt.legend()
     plt.show()
 
-run_simulations()  # Execute the simulation
+run_simulation()  # Execute the simulation
 # This will run the simulations and plot the results.
