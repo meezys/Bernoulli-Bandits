@@ -4,160 +4,150 @@ import matplotlib.pyplot as plt
 from math import ceil, log  
 # horizon is required for certain approaches, such as the ETC algorithm.
 # It represents the total number of rounds or time steps in the simulation.
- 
+
+class Method:
+    """Abstract class for bandit methods."""
+    def __init__(self, horizon, arms):
+        self.horizon = horizon
+        self.arms = arms
+        self.number_of_arms = len(arms)
+        self.sample_means = [0] * self.number_of_arms
+        self.number_of_trials = [0] * self.number_of_arms
+        self.regret_history = []
+
+        self.optimal_arm = max(arms)
+        self.optimality_gaps = [self.optimal_arm - arm for arm in arms]
+        self.delta = np.mean([self.optimal_arm - arm for arm in arms if arm != self.optimal_arm])
+        
+    def run(self):
+        """Run the method and return the regret."""
+        raise NotImplementedError("This method should be overridden by subclasses.")
+    
+    def plot(self):
+        """Plot the regret history."""
+        x = plt.plot(range(len(self.regret_history)), self.regret_history, label=self.__class__.__name__)
+        return x
+
+    def bernoulli_reward(self, arm):
+        """Simulate a Bernoulli reward for a given arm."""
+        return 1 if np.random.rand() < arm else 0
+    
+    def next_regret(self, current_regret):
+        length = len(self.regret_history)
+        if length > 0:
+            new = (self.regret_history[-1] * ((length - 1) / length)) \
+            + (current_regret / length)
+        else:
+            new = current_regret    
+        self.regret_history.append(new)
+    
+    def return_regret(self):
+        """Return the regret history."""
+        return self.regret_history
+    
+    def update_arm_average(self, arm, result):
+        """Update the moving average for the given arm."""
+        if self.number_of_trials[arm] > 0:
+            self.sample_means[arm] = (self.sample_means[arm] * ((self.number_of_trials[arm] - 1) / self.number_of_trials[arm])) \
+            + (result / self.number_of_trials[arm])
+        else:
+            self.sample_means[arm] = result
+        self.number_of_trials[arm] += 1
+
+class AlphaBeta(Method):
+    """Abstract class for methods which make use of the alpha-beta distribution."""
+    def __init__(self, horizon, arms):
+        super().__init__(horizon, arms)
+        self.alpha_beta = [[1, 1]] * self.number_of_arms
+    def alpha_beta_update(self, arm, result):
+        """Update the moving average for the given arm using the alpha-beta method."""
+        self.alpha_beta[arm] = [self.alpha_beta[arm][0] + result, self.alpha_beta[arm][1] + (1 - result)]
+
+class eTC(Method):
+    """Epsilon-Greedy with Thompson Sampling."""
+    def run(self):
+        m = max(1, ceil(4 / self.delta**2 * log(self.horizon * self.delta**2 / 4)))
+        for round in range(self.horizon):
+            if round <= self.number_of_arms * m:
+                arm = round % self.number_of_arms
+            else:
+                arm = np.argmax(self.sample_means)
+            self.update_arm_average(arm, self.bernoulli_reward(self.arms[arm]))
+            self.next_regret(self.optimality_gaps[arm])
+
 
 """Simulate a Bernoulli reward for a given arm."""
 def bernoulli_reward(arm):
     return 1 if np.random.rand() < arm else 0
 
-def ETC():
-    round = 0
-    regret = []
-    arms_array = [0] * number_of_arms
-    number_of_trials = [0] * number_of_arms
-    m = max(1, ceil(4/ delta**2 * log(horizon * delta**2/4)))
-    for round in range(horizon):
-        if round <= m * number_of_arms:
-            arm = round % number_of_arms
-        else:
-            arm = np.argmax(arms_array)
-        result = bernoulli_reward(arms[arm])
-        update_arm_average(arms_array, number_of_trials, arm, result)
-        regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[arm], round + 1))
-    return regret
+class greedy(AlphaBeta):
+    """Greedy algorithm with moving average."""
+    def run(self):
+        for round in range(self.horizon):
+            if round < self.number_of_arms:
+                chosen = round
+            else:
+                chosen = np.argmax(self.sample_means)
+            result = bernoulli_reward(self.arms[chosen])
+            self.update_arm_average(chosen, result)
+            self.alpha_beta_update(chosen, result)
+            self.next_regret(self.optimality_gaps[chosen])
 
-def greedy():
-    regret = []
-    arms_array = [0] * number_of_arms
-    alpha_beta = [[1, 1]] * number_of_arms
-    for round in range(horizon):
-        if round < number_of_arms:
-            chosen = round
-        else:
-            chosen = np.argmax(arms_array)
-        result = bernoulli_reward(arms[chosen])
-        greedy_update(arms_array, alpha_beta, chosen, result)
-        regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[chosen], round + 1))
-    return regret
+    def greedy_update(self, arm, result):
+        """Update the moving average for the given arm using the alpha-beta method."""
+        self.alpha_beta_update(self.alpha_beta, arm, result)
+        self.arms_array[arm] = self.alpha_beta[arm][0] / (self.alpha_beta[arm][0] + self.alpha_beta[arm][1])
 
-def greedy_update(arms_array, alpha_beta, arm, result):
-    """Update the moving average for the given arm using the alpha-beta method."""
-    alpha_beta_update(alpha_beta, arm, result)
-    arms_array[arm] = alpha_beta[arm][0] / (alpha_beta[arm][0] + alpha_beta[arm][1])
+class ThompsonSampling(AlphaBeta):
+    """Thompson Sampling algorithm."""
+    def run(self):
+        self.alpha_beta = [[1, 1]] * self.number_of_arms
+        for _ in range(self.horizon):
+            for arm in range(self.number_of_arms):
+                # Sample from the Beta distribution for each arm
+                self.sample_means[arm] = np.random.beta(self.alpha_beta[arm][0], self.alpha_beta[arm][1])
+            chosen = np.argmax(self.sample_means)
+            result = bernoulli_reward(self.arms[chosen])
+            self.alpha_beta_update(chosen, result)
+            self.next_regret(self.optimality_gaps[chosen])
+class UCB_Methods(Method):
+    """Abstract class for UCB methods."""
+    def __init__(self, horizon, arms):
+        super().__init__(horizon, arms)
+        self.ucb_values = [0] * self.number_of_arms
 
-def thompson_sampling():
-    regret = []
-    arms_array = [0] * number_of_arms
-    alpha_beta = [[1, 1]] * number_of_arms
-    for round in range(horizon):
-        for arm in range(number_of_arms):
-            # Sample from the Beta distribution for each arm
-            arms_array[arm] = np.random.beta(alpha_beta[arm][0], alpha_beta[arm][1])
-        
-        chosen = np.argmax(arms_array)
-        result = bernoulli_reward(arms[chosen])
-        # Update the regret based on the chosen arm's optimality gap
-        # and the current round.
-        alpha_beta_update(alpha_beta, chosen, result)
-        regret.append(next_regret(regret[-1] if regret else 0, optimality_gaps[chosen], round + 1))
-    return regret
-
-def alpha_beta_update(alpha_beta, arm, result):
-    """Update the moving average for the given arm using the alpha-beta method."""
-    alpha_beta[arm] = [alpha_beta[arm][0] + result, alpha_beta[arm][1] + (1 - result)]
-
-"""Moving average calculation: A_k = k-1/k * A_k-1 + 1/k * v_k."""
-def update_arm_average(arms_array, number_of_trials, arm, result):
-    """Update the moving average for the given arm."""
-    if number_of_trials[arm] > 0:
-        arms_array[arm] = (arms_array[arm] * ((number_of_trials[arm] - 1) / number_of_trials[arm])) \
-        + (result / number_of_trials[arm])
-    else:
-        arms_array[arm] = result
-    number_of_trials[arm] += 1
-
-def next_regret(prev_regret, current_regret, length):
-    if length > 0:
-        new = (prev_regret * ((length - 1) / length)) \
-        + (current_regret / length)
-    else:
-        return current_regret
-    return new
-
-def ucb():
-    regret = []
-    sample_means = [0] * number_of_arms
-    number_of_trials = [0] * number_of_arms
-    for i in range(number_of_arms):
-        sample_means[i] = bernoulli_reward(arms[i])
-        number_of_trials[i] = 1
-        regret.append(next_regret(0, optimality_gaps[i], i + 1))
-    for round in range(number_of_arms, horizon):
-        ucb_values = [sample_means[i] + math.sqrt(2 * log(round + 1) / number_of_trials[i]) for i in range(number_of_arms)]
-        chosen = np.argmax(ucb_values)
-        result = bernoulli_reward(arms[chosen])
-        update_arm_average(sample_means, number_of_trials, chosen, result)
-        regret.append(next_regret(regret[-1], optimality_gaps[chosen], round + 1))
-    return regret
-def f(t):
-    return 1 + t * (math.log(t))**2
-
-def moss():
-    regret = []
-    sample_means = [0] * number_of_arms
-    number_of_trials = [0] * number_of_arms
-    for i in range(number_of_arms):
-        sample_means[i] = bernoulli_reward(arms[i])
-        number_of_trials[i] = 1
-        regret.append(next_regret(0, optimality_gaps[i], i + 1))
-    for round in range(number_of_arms, horizon):
-        ucb_values = [sample_means[i] + 
-                      math.sqrt((4/number_of_trials[i]) * log_plus(horizon) /number_of_arms * number_of_trials[i]) 
-                      for i in range(number_of_arms)]
-        chosen = np.argmax(ucb_values)
-        result = bernoulli_reward(arms[chosen])
-        update_arm_average(sample_means, number_of_trials, chosen, result)
-        regret.append(next_regret(regret[-1], optimality_gaps[chosen], round + 1))
-    return regret
-
-def moss_selector_1(sample_means, number_of_trials, arm):
-    return sample_means[arm] + math.sqrt((4/number_of_trials[arm]) * log_plus(horizon) /number_of_arms * number_of_trials[arm])
-
-
-def log_plus(x):
-    """Calculate the logarithm of x plus one."""
-    return math.log(max(x, 1))
-
-"""This function calculates the next regret value based on the previous regret,
-the current regret, and the length.
-The chosen methods are ETC, Greedy, and Thompson Sampling."""
-def run_simulation():
-    global horizon
-    horizon = 10000
-    global arms
-    arms = [0.7, 0.8, 0.1, 0.9]  # Example arm probabilities
-    global number_of_arms
-    number_of_arms = len(arms)
-    
-    # the optimal arm is the one with the highest probability of success
-    global optimal_arm
-    optimal_arm = max(arms)
-    # Calculate the optimality gaps for each arm
-    global optimality_gaps
-    optimality_gaps = [optimal_arm - arm for arm in arms]
-    # The delta 
-    global delta
-    delta = np.mean([optimal_arm - arm for arm in arms if arm != optimal_arm])
-
-    # Calculate the delta value based on the optimal arm and the other arms
-    thompson = thompson_sampling()  # Run Thompson Sampling
-    etc = ETC()  # Start the simulation with the first round
-    greedy_regret = greedy()  # Run Greedy algorithm
-    ucb_regret = ucb()  # Run UCB algorithm
-    moss_regret = moss()  # Run MOSS algorithm
-    # Plot the results
-    plot(etc, thompson, greedy_regret, ucb_regret, moss_regret)
-
+class UCB(UCB_Methods):
+    """Upper Confidence Bound algorithm."""
+    def run(self):
+        for i in range(self.number_of_arms):
+            self.sample_means[i] = bernoulli_reward(self.arms[i])
+            self.number_of_trials[i] = 1
+            self.next_regret(self.optimality_gaps[i])
+        for round in range(self.number_of_arms, self.horizon):
+            self.ucb_values = [self.sample_means[i] + math.sqrt(2 * log(round + 1) / self.number_of_trials[i]) 
+                          for i in range(self.number_of_arms)]
+            chosen = np.argmax(self.ucb_values)
+            result = bernoulli_reward(self.arms[chosen])
+            self.update_arm_average(chosen, result)
+            self.next_regret(self.optimality_gaps[chosen])
+        return self.regret_history
+class MOSS(UCB_Methods):
+    def run(self):
+        for i in range(self.number_of_arms):
+            self.sample_means[i] = bernoulli_reward(self.arms[i])
+            self.number_of_trials[i] = 1
+            self.next_regret(self.optimality_gaps[i])
+        for _ in range(self.number_of_arms, self.horizon):
+            self.ucb_values = [self.sample_means[i] + 
+                               math.sqrt((4 / self.number_of_trials[i]) * self.log_plus(self.horizon) / self.number_of_arms * self.number_of_trials[i]) 
+                               for i in range(self.number_of_arms)]
+            chosen = np.argmax(self.ucb_values)
+            result = bernoulli_reward(self.arms[chosen])
+            self.update_arm_average(chosen, result)
+            self.next_regret(self.optimality_gaps[chosen])
+    def log_plus(x):
+        """ Calculate the logarithm of x plus one."""
+        return math.log(max(x, 1))
 
 
 def plot(etc, thompson, greedy_regret, ucb_regret, moss_regret):
@@ -173,5 +163,17 @@ def plot(etc, thompson, greedy_regret, ucb_regret, moss_regret):
     plt.legend()
     plt.show()
 
-run_simulation()  # Execute the simulation
+def main(horizon=10000, arms=[0.7, 0.8, 0.1, 0.9]):
+    """Main function to run the simulation."""
+    solution = UCB(horizon, arms)  # Create an instance of the ETC method
+    # Run the ETC method
+    # Plot the results
+    solution.run()  # Run the method
+    solution.plot()  # Plot the regret history
+    plt.xlabel('Rounds')
+    plt.ylabel('Regret')
+    plt.title('Regret over Rounds')
+    plt.legend()
+    plt.show()  # Show the plot without blocking the execution
+main()  # Execute the simulation
 # This will run the simulations and plot the results.
