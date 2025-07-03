@@ -78,11 +78,6 @@ class AlphaBeta(Method):
     def alpha_beta_update(self, arm, result):
         self.alpha_beta[arm] = [self.alpha_beta[arm][0] + result, self.alpha_beta[arm][1] + (1 - result)]
 
-"""Abstract class for UCB methods."""
-class UCB_Methods(Method):
-    def __init__(self, horizon, arms):
-        super().__init__(horizon, arms)
-        self.ucb_values = [0] * self.number_of_arms
 
 """ Explore and then Commit algorithm: . Lattimore and Tardos (2009) Stochastic Bandits: Learning and Regret Analysis. 
 6.1 Algorithm and Regret Analysis. Algorithm 1: Explore-then-commit"""
@@ -128,49 +123,59 @@ class ThompsonSampling(AlphaBeta):
             result = self.bernoulli_reward(self.arms[chosen])
             self.alpha_beta_update(chosen, result)
             self.next_regret(self.optimality_gaps[chosen])
-""" UCB algorithm: Upper Confidence Bound method. Lattimore and Tardos (2009), The Upper Confidence Bound
-Algorithm: Asymptotic Optimality, Algorithm 6: Asymptotically Optimal UCB"""
-class UCB(UCB_Methods):
+"""Abstract class for UCB methods."""
+class UCB_Methods(Method):
+    def __init__(self, horizon, arms):
+        super().__init__(horizon, arms)
+        self.ucb_values = [0] * self.number_of_arms
     def run(self):
         for i in range(self.number_of_arms):
             self.sample_means[i] = self.bernoulli_reward(self.arms[i])
             self.number_of_trials[i] = 1
             self.next_regret(self.optimality_gaps[i])
         for round in range(self.number_of_arms, self.horizon):
-            self.ucb_values = [self.sample_means[i] + math.sqrt(2 * log(round + 1) / self.number_of_trials[i]) 
-                          for i in range(self.number_of_arms)]
-            chosen = np.argmax(self.ucb_values)
-            result = self.bernoulli_reward(self.arms[chosen])
-            self.update_arm_average(chosen, result)
-            self.next_regret(self.optimality_gaps[chosen])
-        return self.regret_history
-
-""" MOSS Algorithm. Lattimore and Tardos (2009), The Upper Confidence Bound Algorithm: Minimax Optimality, Algorithm 7: MOSS"""
-class MOSS(UCB_Methods):
-    def run(self):
-        for i in range(self.number_of_arms):
-            self.sample_means[i] = self.bernoulli_reward(self.arms[i])
-            self.number_of_trials[i] = 1
-            self.next_regret(self.optimality_gaps[i])
-        for _ in range(self.number_of_arms, self.horizon):
-            self.ucb_values = [self.sample_means[i] + 
-                               math.sqrt((4 / self.number_of_trials[i]) * self.log_plus(self.horizon) / self.number_of_arms * self.number_of_trials[i]) 
+            # All the UCB methods are similar, only different in the index calculation.
+            self.ucb_values = [self.sample_means[i] + self.index(i, round) 
                                for i in range(self.number_of_arms)]
             chosen = np.argmax(self.ucb_values)
             result = self.bernoulli_reward(self.arms[chosen])
             self.update_arm_average(chosen, result)
             self.next_regret(self.optimality_gaps[chosen])
+    def index(self, arm, round):
+        """Calculate the index for the UCB value. This method should be overridden by subclasses."""
+        raise NotImplementedError("This method should be overridden by subclasses.")
+
+""" UCB algorithm: Upper Confidence Bound method. Lattimore and Tardos (2009), The Upper Confidence Bound
+Algorithm: Asymptotic Optimality, Algorithm 6: Asymptotically Optimal UCB"""
+class UCB(UCB_Methods):
+    def index(self, arm, round):
+        return math.sqrt(2 * log(round + 1) / self.number_of_trials[arm]) 
+
+
+""" MOSS Algorithm. Lattimore and Tardos (2009), The Upper Confidence Bound Algorithm: Minimax Optimality, Algorithm 7: MOSS"""
+class MOSS(UCB_Methods):
     def log_plus(self, x):
         """ Calculate the logarithm of x plus one."""
         return math.log(max(x, 1))
+    def index(self, arm, round):
+        return math.sqrt((4 / self.number_of_trials[arm]) * self.log_plus(self.horizon) / self.number_of_arms * self.number_of_trials[arm])
     
+class Ada_UCB(UCB_Methods):
+    def summy(self, i):
+        sum = 0
+        for j in range(self.number_of_arms):
+            sum += min(self.number_of_trials[i], math.sqrt(self.number_of_trials[j] * self.number_of_trials[i]))
+        return sum
+    def index(self, arm, round):
+        return log(self.horizon/self.summy(arm))
+
 '''Main function to run the simulation and plot results.
 This function allows for customization of arms, horizon, and methods used in the simulation.
 If no arms are provided, it randomly generates a set of arms with probabilities between 0.1 and 0.9.
 The horizon is set to 10000 by default, but can be adjusted.
 The methods parameter allows for selection of different bandit algorithms to be tested, 
 with a default set including Greedy, ThompsonSampling, UCB, MOSS,'''
-def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC]):
+def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB]):
     random_arms = False  # Flag to indicate if arms are randomly generated
     # Validate input parameters
     if not isinstance(horizon, int) or horizon <= 0:
@@ -250,7 +255,7 @@ def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSamplin
 # This line runs the simulation with 10 trials and the specified methods. 
 
 
-main(arms = [0.1, 0.2, 0.3, 0.4, 0.5], methods = [ThompsonSampling, MOSS], trials = 100)
+main(arms = [0.1, 0.2, 0.5], methods = [ThompsonSampling, Ada_UCB], trials = 50)
 # This line runs the simulation with specified arms and methods.
 
 # main(arms = )
