@@ -201,7 +201,6 @@ The horizon is set to 10000 by default, but can be adjusted.
 The methods parameter allows for selection of different bandit algorithms to be tested, 
 with a default set including Greedy, ThompsonSampling, UCB, MOSS,'''
 def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB], display_arms = False):
-    random_arms = False  # Flag to indicate if arms are randomly generated
     # Validate input parameters
     if not isinstance(horizon, int) or horizon <= 0:
         raise ValueError("Horizon must be a positive integer.")
@@ -211,7 +210,6 @@ def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSamplin
         raise ValueError("At least one method must be provided.")
     if arms is None or len(arms) < 2:
         number_of_arms = random.randint(2, 10)  # Randomly choose the number of arms
-        random_arms = True
         arms = [random.uniform(0.1, 0.9) for _ in range(number_of_arms)]  # Randomly generate arm probabilities
     if not isinstance(arms, list):
         raise ValueError("Arms must be a list of probabilities.")
