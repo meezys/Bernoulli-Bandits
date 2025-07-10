@@ -26,7 +26,6 @@ class Method:
         self.optimality_gaps = [self.optimal_arm - arm for arm in arms]
         self.delta = np.mean([self.optimal_arm - arm for arm in arms if arm != self.optimal_arm])
 
-
     """Run the method given an environment and horizon regret."""
     def run(self):
         raise NotImplementedError("This method should be overridden by subclasses.")
@@ -144,22 +143,32 @@ class UCB_Methods(Method):
     def index(self, arm, round):
         """Calculate the index for the UCB value. This method should be overridden by subclasses."""
         raise NotImplementedError("This method should be overridden by subclasses.")
+    def f(self, t):
+        return 1 + t * (log(t)**2)
+    def log_plus(self, x):
+        """ Calculate the logarithm of x plus one."""
+        return math.log(max(x, 1))
+
 
 """ UCB algorithm: Upper Confidence Bound method. Lattimore and Tardos (2009), The Upper Confidence Bound
 Algorithm: Asymptotic Optimality, Algorithm 6: Asymptotically Optimal UCB"""
 class UCB(UCB_Methods):
-    def index(self, arm, round):
-        return math.sqrt(2 * log(round + 1) / self.number_of_trials[arm]) 
+    def index(self, arm, round): 
+        return math.sqrt((2 * math.log(round + 1)) / self.number_of_trials[arm])
 
+class UCB_2(UCB_Methods):
+    """ UCB algorithm: Upper Confidence Bound method. Lattimore and Tardos (2009), The Upper Confidence Bound
+    Algorithm: Asymptotic Optimality, Algorithm 6: Asymptotically Optimal UCB"""
+    def index(self, arm, round):
+        return math.sqrt((2 * math.log(self.f(round + 1))) / self.number_of_trials[arm])
+    
 
 """ MOSS Algorithm. Lattimore and Tardos (2009), The Upper Confidence Bound Algorithm: Minimax Optimality, Algorithm 7: MOSS"""
 class MOSS(UCB_Methods):
-    def log_plus(self, x):
-        """ Calculate the logarithm of x plus one."""
-        return math.log(max(x, 1))
     def index(self, arm, round):
-        return math.sqrt((4 / self.number_of_trials[arm]) * self.log_plus(self.horizon) / self.number_of_arms * self.number_of_trials[arm])
+        return math.sqrt((4 / self.number_of_trials[arm]) * self.log_plus(self.horizon / (self.number_of_arms * self.number_of_trials[arm])))
     
+""" Ada_UCB Algorithm. Lattimore and Tardos (2009), The Upper Confidence Bound Algorithm: Minimax Optimality, 9.4 Bibliographical Remarks; Note 3 """
 class Ada_UCB(UCB_Methods):
     def summy(self, i):
         sum = 0
@@ -167,7 +176,29 @@ class Ada_UCB(UCB_Methods):
             sum += min(self.number_of_trials[i], math.sqrt(self.number_of_trials[j] * self.number_of_trials[i]))
         return sum
     def index(self, arm, round):
-        return log(self.horizon/self.summy(arm))
+        return math.sqrt(2/self.number_of_trials[arm] * self.log_plus(self.horizon/self.summy(arm)))
+
+class KL_UCB(UCB_Methods):
+    """ KL-UCB Algorithm. Lattimore and Tardos (2009), The Upper Confidence Bound Algorithm: Bernoulli Noise, Algorithm 8: KL-UCB"""
+    def index(self, arm, round):
+        p = self.sample_means[arm]
+        rhs = self.f(round + 1) / self.number_of_trials[arm]
+        low, high = p, 1.0
+        while high - low > 1e-6:
+            q = (low + high) / 2
+            if self.kl_divergence(p, q) > rhs:
+                high = q
+            else:
+                low = q
+        return low - p  # The index is added to sample_mean outside.
+    def kl_divergence(self, p, q):
+        """Calculate the KL divergence between two Bernoulli distributions."""
+        if p == 0:
+            return 0 if q == 0 else float('inf')
+        if p == 1:
+            return 0 if q == 1 else float('inf')
+        return p * np.log(p / q) + (1 - p) * np.log((1 - p) / (1 - q))
+
 
 '''Main function to run the simulation and plot results.
 This function allows for customization of arms, horizon, and methods used in the simulation.
@@ -245,17 +276,19 @@ def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSamplin
 
 
 
-# main()  
-# Uncomment the line above to run the main function with default parameters.
+'''To run a specific experiment, you can call the main function with desired parameters. You can specify the number of trials,
+the arms (if you want to use specific probabilities), the horizon, and the methods you want to test. 
+For example:
+main(arms = [0.1, 0.2, 0.5], methods = [ThompsonSampling, Ada_UCB], trials = 50)
+main(trials = 10) runs the simulation with 10 trials and the default methods and horizon, and random arms.
+main(trials = 10, methods = [Greedy, ThompsonSampling, ETC]) runs it with 10 trials and the specified methods etc.
 
-# main(trials = 10)
-# This line runs the simulation with 10 trials.
+'''
 
 # main(trials = 10, methods = [Greedy, ThompsonSampling, ETC])
-# This line runs the simulation with 10 trials and the specified methods. 
+# main(trials = 10)
+# main(arms = [0.1, 0.2, 0.5], methods = [ThompsonSampling, Ada_UCB], trials = 50)
 
 
-main(arms = [0.1, 0.2, 0.5], methods = [ThompsonSampling, Ada_UCB], trials = 50)
-# This line runs the simulation with specified arms and methods.
+main(methods = [Ada_UCB, UCB_2], trials = 50)
 
-# main(arms = )
