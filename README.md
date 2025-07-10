@@ -1,3 +1,3 @@
 Simple implementations of Bandit Algorithms, specifically for Bernoulli Bandits. <br>The implemenentation includes methods such as Explore-Then-Commit, Greedy, Thompson Sampling, UCB, MOSS, AdaUCB, KL-UCB.  
-Uncomment and alter the line at the bottom to specify the experiment(s) desired<br>
-Implementations are based on pseudocode given from the textbooks 'A Tutorial on Thompson Sampling'(https://arxiv.org/abs/1707.02038) and 'Bandit Algorithms' (1.Lattimore T, Szepesvári C. Stochastic Bandits with Finitely Many Arms. In: Bandit Algorithms. Cambridge University Press; 2020:73-74.) 
+Uncomment and alter the line at the bottom to specify the experiment(s) desired<br> There's also a link to my Google Colab: https://colab.research.google.com/drive/1yz5aTEi3j84E9Z0X4QN8CeAjNdvzgcNa?usp=sharing
+<br>Implementations are based on pseudocode given from the textbooks 'A Tutorial on Thompson Sampling'(https://arxiv.org/abs/1707.02038) and 'Bandit Algorithms' (1.Lattimore T, Szepesvári C. Stochastic Bandits with Finitely Many Arms. In: Bandit Algorithms. Cambridge University Press; 2020:73-74.) 
