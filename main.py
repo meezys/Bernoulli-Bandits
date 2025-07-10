@@ -18,8 +18,8 @@ class Method:
         
         '''Common metrics used across methods.'''
         self.sample_means = [0] * self.number_of_arms
-        self.number_of_trials = [0] * self.number_of_arms
         self.regret_history = []
+        self.number_of_trials = [0] * self.number_of_arms
 
         '''Initialize the optimal arm and calculate the optimality gaps. These are used to calculate regret.'''
         self.optimal_arm = max(arms)
@@ -105,11 +105,6 @@ class Greedy(AlphaBeta):
             self.alpha_beta_update(chosen, result)
             self.next_regret(self.optimality_gaps[chosen])
 
-    def greedy_update(self, arm, result):
-        """Update the moving average for the given arm using the alpha-beta method."""
-        self.alpha_beta_update(self.alpha_beta, arm, result)
-        self.arms_array[arm] = self.alpha_beta[arm][0] / (self.alpha_beta[arm][0] + self.alpha_beta[arm][1])
-
 """Thompson Sampling algorithm. A Tutorial on Thompson Sampling; Algorithm 3.2(BernTS), p15"""
 class ThompsonSampling(AlphaBeta):
     def run(self):
@@ -162,7 +157,6 @@ class UCB_2(UCB_Methods):
     def index(self, arm, round):
         return math.sqrt((2 * math.log(self.f(round + 1))) / self.number_of_trials[arm])
     
-
 """ MOSS Algorithm. Lattimore and Tardos (2009), The Upper Confidence Bound Algorithm: Minimax Optimality, Algorithm 7: MOSS"""
 class MOSS(UCB_Methods):
     def index(self, arm, round):
@@ -206,7 +200,7 @@ If no arms are provided, it randomly generates a set of arms with probabilities 
 The horizon is set to 10000 by default, but can be adjusted.
 The methods parameter allows for selection of different bandit algorithms to be tested, 
 with a default set including Greedy, ThompsonSampling, UCB, MOSS,'''
-def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB]):
+def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB], display_arms = False):
     random_arms = False  # Flag to indicate if arms are randomly generated
     # Validate input parameters
     if not isinstance(horizon, int) or horizon <= 0:
@@ -235,7 +229,12 @@ def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSamplin
         raise ValueError("All methods must have a 'run' method defined.")
 
     # Plot regret histories for each method
-    plt.figure(figsize=(10, 5))
+    print("Simulation Parameters:")
+    print(f"  Methods: {[method.__name__ for method in methods]}")
+    print(f"  Horizon: {horizon}")
+    print(f"  Arms (rounded): {[round(arm, 2) for arm in arms]}")
+    print(f"  Number of trials: {trials}")
+    plt.figure(figsize=(10, 10))
     colors = plt.cm.tab10.colors  # or any colormap
     for i, method in enumerate(methods):
         regrets = []
@@ -259,7 +258,7 @@ def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSamplin
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    if not random_arms:
+    if not display_arms:
         plt.show()
     else: 
         plt.show(block=False)  # Show non-blocking
@@ -273,7 +272,7 @@ def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSamplin
         plt.title('Distribution of Arm Suboptimality Gaps')
         plt.tight_layout()
         plt.show()
-
+        
 
 
 '''To run a specific experiment, you can call the main function with desired parameters. You can specify the number of trials,
@@ -290,5 +289,5 @@ main(trials = 10, methods = [Greedy, ThompsonSampling, ETC]) runs it with 10 tri
 # main(arms = [0.1, 0.2, 0.5], methods = [ThompsonSampling, Ada_UCB], trials = 50)
 
 
-main(methods = [Ada_UCB, UCB_2], trials = 50)
+main(methods = [UCB, Ada_UCB], trials = 50)
 
