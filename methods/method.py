@@ -57,3 +57,7 @@ class Method:
         else:
             self.sample_means[arm] = result
         self.number_of_trials[arm] += 1
+
+    def total_regret(self):
+        """Return the total regret for the current method."""
+        return sum(self.regret_history)

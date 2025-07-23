@@ -7,6 +7,8 @@ from methods.ada import Ada_UCB
 from methods.method import Method
 from methods.kl_ucb import KL_UCB
 from methods.hellinger import Hellinger
+from methods.ts_ucb import TS_UCB
+from methods.ts_ada_ucb import TS_Ada_UCB
 
 import random
 import numpy as np
@@ -56,24 +58,24 @@ def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSamplin
     # plt.mode(dark=True)  # Set dark mode for the plot
     colors = plt.cm.tab10.colors  # or any colormap
     for i, method in enumerate(methods):
+        total_regret  = 0
         regrets = []
         for _ in range(trials):
             solution = method(horizon, arms)
             solution.run()
-            regrets.append(solution.return_regret())    
+            regrets.append(solution.return_regret())
+            total_regret += solution.total_regret()    
         regrets = np.array(regrets)
         if trials > 1:
+            mean_total_regret = total_regret / trials
             mean_regret = np.mean(regrets, axis = 0)
-            std_regret = np.std(regrets, axis = 0)
-            print(f"Method: {method.__name__}, Mean Regret: {mean_regret[-1]:.4f}, Std Dev: {std_regret[-1]:.4f}")
+            # max_regret = np.max(regrets, axis = 0)
+            # min_regret = np.min(regrets, axis = 0)
+            
+            print(f" {method.__name__} finished with an average regret of : {mean_total_regret}")
             plt.plot(mean_regret, color=colors[i], label=method.__name__, linewidth=2)
         else:
             plt.plot(regrets[0], color=colors[i], label=method.__name__, linewidth=2)
-    # next_color_index = len(methods) % len(colors) + 1
-    # hl_and_kl = copied.plot(trials = trials, arms = arms)
-    # plt.plot(hl_and_kl[0], color=colors[next_color_index], label='KL', linewidth=2, linestyle='--')
-    # next_color_index += 1
-    # plt.plot(hl_and_kl[1], color=colors[next_color_index], label='HL', linewidth=2, linestyle='--')
     plt.xlabel('Rounds')
     plt.ylabel('Regret')
     plt.title('Regret over Rounds')
@@ -93,10 +95,7 @@ main(trials = 10, methods = [Greedy, ThompsonSampling, ETC]) runs it with 10 tri
 
 '''
 
-# main(trials = 10, methods = [Greedy, ThompsonSampling, ETC])
-# main(trials = 10)
-# main(arms = [0.1, 0.2, 0.5], methods = [ThompsonSampling, Ada_UCB], trials = 50)
 
 
-main(methods = [Hellinger, KL_UCB, Ada_UCB, ThompsonSampling], trials = 500, horizon=1000)
+main(methods = [TS_Ada_UCB, TS_UCB, ThompsonSampling], trials = 100, horizon=1000, arms = [0.1, 0.2, 0.5, 0.7, 0.9])
 

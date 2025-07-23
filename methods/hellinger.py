@@ -12,20 +12,24 @@ class Hellinger(Method):
             self.next_regret(self.optimality_gaps[chosen])
 
     def index(self, round):
+        c = 0.25 + eps
         """Calculate the Hellinger UCB index for each arm."""
         indices = []
         for arm in range(self.number_of_arms):
             if self.number_of_trials[arm] == 0:
                 indices.append(float('inf'))  # Infinite index for untried arms
             else:
-                indices.append(min(1, self.hellinger_ucb(self.sample_means[arm], np.divide(np.log(round), self.number_of_trials[arm]), precision=1e-10)))
+                indices.append(min(1, 
+                self.hellinger_ucb(self.sample_means[arm], 
+                1. - np.exp(-c * np.log(round)/self.number_of_trials[arm]), 
+                precision=eps)))
         return indices
     
-    def hellinger_ucb(self, mean, log_term, precision=1e-10):
+    def hellinger_ucb(self, mean, log_term, precision=1e-15):
         upperbound = 1
         return self.hellinger(mean, log_term, lowerbound=-1, upperbound=upperbound, precision=precision)
 
-    def hellinger(self, mean, log_term, lowerbound, upperbound, precision=1e-10):
+    def hellinger(self, mean, log_term, lowerbound, upperbound, precision=1e-6):
         """Calculate the Hellinger UCB index for a given mean and log term."""
         l = max(mean, lowerbound)
         u = upperbound
