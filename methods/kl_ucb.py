@@ -1,4 +1,4 @@
-from methods.method import Method
+from .method import Method
 import numpy as np
 eps = 2e-16
 class KL_UCB(Method):

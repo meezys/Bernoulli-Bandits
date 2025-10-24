@@ -1,4 +1,4 @@
-from methods.ucb import UCB_Methods
+from .ucb import UCB_Methods
 import numpy as np
 
 class MOSS(UCB_Methods):

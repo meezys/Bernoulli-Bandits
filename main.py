@@ -7,14 +7,13 @@ from methods.ada import Ada_UCB
 from methods.method import Method
 from methods.kl_ucb import KL_UCB
 from methods.hellinger import Hellinger
-from methods.ts_ucb import TS_UCB
-from methods.ts_ada_ucb import TS_Ada_UCB
+from methods.ts_ucb_2 import TS_UCB_2
 
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB, KL_UCB, Hellinger]
+methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB, KL_UCB, Hellinger,  TS_UCB_2]
 
 '''Main function to run the simulation and plot results.
 This function allows for customization of arms, horizon, and methods used in the simulation.
@@ -22,7 +21,7 @@ If no arms are provided, it randomly generates a set of arms with probabilities 
 The horizon is set to 10000 by default, but can be adjusted.
 The methods parameter allows for selection of different bandit algorithms to be tested, 
 with a default set including Greedy, ThompsonSampling, UCB, MOSS,'''
-def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB], display_arms = False):
+def main(trials = 1, arms=None,horizon=10000, methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB]):
     # Validate input parameters
     if not isinstance(horizon, int) or horizon <= 0:
         raise ValueError("Horizon must be a positive integer.")
@@ -92,10 +91,9 @@ For example:
 main(arms = [0.1, 0.2, 0.5], methods = [ThompsonSampling, Ada_UCB], trials = 50)
 main(trials = 10) runs the simulation with 10 trials and the default methods and horizon, and random arms.
 main(trials = 10, methods = [Greedy, ThompsonSampling, ETC]) runs it with 10 trials and the specified methods etc.
-
 '''
 
 
 
-main(methods = [TS_Ada_UCB, TS_UCB, ThompsonSampling], trials = 100, horizon=1000, arms = [0.1, 0.2, 0.5, 0.7, 0.9])
+main(methods = [Hellinger,  ThompsonSampling],trials = 300, horizon=1000)
 

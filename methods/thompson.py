@@ -1,4 +1,4 @@
-from methods.alphabeta import AlphaBeta
+from .alphabeta import AlphaBeta
 import numpy as np
 class ThompsonSampling(AlphaBeta):
     def run(self):

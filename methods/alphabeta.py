@@ -1,4 +1,4 @@
-from methods.method import Method
+from .method import Method
 class AlphaBeta(Method):
     '''The Greedy and Thompson Sampling Methods make use of the pair (alpha,beta) which is the number of successes 
     and failure for each arm, respectively. .'''
@@ -19,6 +19,6 @@ class AlphaBeta(Method):
         alpha, beta = self.alpha_beta[arm]
         return (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1))
     
-    def total(self,arm):
+    def ab_total(self,arm):
         """Return the total number of trials for a given arm."""
         return self.alpha_beta[arm][0] + self.alpha_beta[arm][1]

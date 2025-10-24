@@ -1,4 +1,4 @@
-from methods.method import Method
+from .method import Method
 from math import ceil, log
 import numpy as np
 class ETC(Method):

@@ -1,4 +1,4 @@
-from methods.method import Method
+from .method import Method
 import numpy as np
 
 class UCB_Methods(Method):
