@@ -8,12 +8,14 @@ from methods.method import Method
 from methods.kl_ucb import KL_UCB
 from methods.hellinger import Hellinger
 from methods.ts_ucb_2 import TS_UCB_2
+from methods.ts_ucb_b import TS_UCB_B
+from methods.ts_pmo import TS_UCB_A
 
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB, KL_UCB, Hellinger,  TS_UCB_2]
+methods = [Greedy, ThompsonSampling, UCB, MOSS, ETC, Ada_UCB, KL_UCB, Hellinger,  TS_UCB_2, TS_UCB_B, TS_UCB_A]
 
 '''Main function to run the simulation and plot results.
 This function allows for customization of arms, horizon, and methods used in the simulation.
@@ -95,5 +97,5 @@ main(trials = 10, methods = [Greedy, ThompsonSampling, ETC]) runs it with 10 tri
 
 
 
-main(methods = [Hellinger,  ThompsonSampling],trials = 300, horizon=1000)
+main(methods = [TS_UCB_A, TS_UCB_2],trials = 1000, horizon=1000)
 
