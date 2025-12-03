@@ -43,7 +43,7 @@ def main(trials = 1, arms=None,horizon=10000):
     # Write results to CSV with requested headings. Append if file exists.
     header = ['arms'] + [f"TS-UCB({ms})" for ms in m]
     row = [';'.join(map(str, arms))] + results
-    csv_file = 'results.csv'
+    csv_file = CSV_FILE
     try:
         file_exists = os.path.exists(csv_file) and os.path.getsize(csv_file) > 0
         mode = 'a' if file_exists else 'w'
