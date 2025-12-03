@@ -2,6 +2,8 @@ from methods.ts_ucb_2 import TS_UCB_2
 from methods.ts_ucb_b import TS_UCB_B
 from methods.ts_pmo import TS_UCB_A
 
+CSV_FILE = 'results.csv'
+
 import random
 import numpy as np
 import matplotlib.pyplot as plt
